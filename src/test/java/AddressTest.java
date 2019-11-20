@@ -1,0 +1,96 @@
+import com.google.common.collect.ImmutableList;
+import entity.P2SHMultiSigAccount;
+import org.bitcoinj.core.Address;
+import org.bitcoinj.core.ECKey;
+import org.bitcoinj.crypto.ChildNumber;
+import org.bitcoinj.params.MainNetParams;
+import org.bitcoinj.params.TestNet3Params;
+import org.junit.Test;
+import sdk.BitcoinOffLineSDK;
+import sdk.BitcoinSDKConfig;
+import utils.Converter;
+
+import java.security.SignatureException;
+import java.util.Arrays;
+import java.util.List;
+
+import static org.hamcrest.CoreMatchers.is;
+import static org.junit.Assert.assertThat;
+
+public class AddressTest {
+    @Test
+    public void createNewAddress(){
+        BitcoinOffLineSDK.CONFIG.setNetworkParameters(MainNetParams.get());
+        List<String> mnemonicCode = Arrays.asList("weasel", "street", "dutch", "vintage", "legal", "network",
+                "squirrel", "sort", "stereo", "drum", "trumpet", "farm");
+        String passphrase = "your passphrase";
+        byte[] seed=BitcoinOffLineSDK.MNEMONIC.generateSeed(mnemonicCode,passphrase);
+
+        ECKey ecKey=BitcoinOffLineSDK.ADDRESS.getECKey(seed,0,0);
+        String address=BitcoinOffLineSDK.ADDRESS.getAddress(ecKey);
+        assertThat(address, is("1jWa6a9y4eoVJtGSH5bMo2krPq2mXkJtz"));
+
+        ecKey=BitcoinOffLineSDK.ADDRESS.getECKey(seed,1,0);
+        address=BitcoinOffLineSDK.ADDRESS.getAddress(ecKey);
+        assertThat(address, is("141tHfGH61XUgMqU6SuqoS8osW1sPeCZ96"));
+
+        ecKey=BitcoinOffLineSDK.ADDRESS.getECKey(seed,1,1);
+        address=BitcoinOffLineSDK.ADDRESS.getAddress(ecKey);
+        assertThat(address, is("1Kwk9VW5XbvmCYy74c4Fja6KugRfHSDTa1"));
+
+        ecKey=BitcoinOffLineSDK.ADDRESS.getECKey(seed,1,10);
+        address=BitcoinOffLineSDK.ADDRESS.getAddress(ecKey);
+        assertThat(address, is("1853DuTD8QPKrAyvEqKZZ4ryJ5JNbAnZwf"));
+    }
+
+    @Test
+    public void testWIF() {
+        List<String> mnemonicCode = Arrays.asList("weasel", "street", "dutch", "vintage", "legal", "network",
+                "squirrel", "sort", "stereo", "drum", "trumpet", "farm");
+        String passphrase = "your passphrase";
+        byte[] seed=BitcoinOffLineSDK.MNEMONIC.generateSeed(mnemonicCode,passphrase);
+
+        ECKey ecKey=BitcoinOffLineSDK.ADDRESS.getECKey(seed,1,10);
+
+        String address=BitcoinOffLineSDK.ADDRESS.getAddress(ecKey);
+        byte[] pubKey=ecKey.getPubKey();
+        byte[] pubKeyHash=ecKey.getPubKeyHash();
+        System.out.println(Converter.byteToHex(pubKey));
+        System.out.println(Converter.byteToHex(pubKeyHash));
+
+
+        String privateKeyAsHex = BitcoinOffLineSDK.ADDRESS.getPrivateKeyAsHex(ecKey);
+        String publicKeyAsHex =  BitcoinOffLineSDK.ADDRESS.getPublicKeyAsHex(ecKey);
+        String WIF =  BitcoinOffLineSDK.ADDRESS.getWIF(ecKey);
+        assertThat(privateKeyAsHex, is("16bfdab77dde08b329668867cd1505c78c2dfe6e277d737df8649ad8cd97a6fa"));
+        assertThat(publicKeyAsHex, is("03f9fe3ecc7f5ac22c8a3361030a203230695623e198262f2a470292602f7d5afb"));
+        assertThat(WIF, is("Kwyw4CddU1Lpn5mgtc17PCiPEju48hrd4zVKx8CJRT9ng3keQYDK"));
+        assertThat(address, is("1853DuTD8QPKrAyvEqKZZ4ryJ5JNbAnZwf"));
+    }
+
+    @Test
+    public void testGenerateMultiSigAddress() {
+        BitcoinOffLineSDK.CONFIG.setNetworkParameters(TestNet3Params.get());
+        ECKey publicKeyA = BitcoinOffLineSDK.ADDRESS.publicKeyToECKey("0218e262023a9e32eb44cdc18a2158dc5a81c747e6e9c78e0c6a7edb8100a0147e");
+        ECKey publicKeyB = BitcoinOffLineSDK.ADDRESS.publicKeyToECKey("03c19f6736ba4d7851bae2f7b95e8aa7f919dca8ab0fc4c7483b265c0ebc970e47");
+        ECKey publicKeyC = BitcoinOffLineSDK.ADDRESS.publicKeyToECKey("03124af1502666ba7bf2e833ddab36a7f68e21340c97cc77ad0678291bde4c5282");
+        List<ECKey> keys = ImmutableList.of(publicKeyA, publicKeyB, publicKeyC);
+        P2SHMultiSigAccount p2SHMultiSigAccount = BitcoinOffLineSDK.ADDRESS.generateMultiSigAddress(2, keys);
+        assertThat(Converter.byteToHex(p2SHMultiSigAccount.getRedeemScript().getProgram()), is("52210218e262023a9e32eb44cdc18a2158dc5a81c747e6e9c78e0c6a7edb8100a0147e2103124af1502666ba7bf2e833ddab36a7f68e21340c97cc77ad0678291bde4c52822103c19f6736ba4d7851bae2f7b95e8aa7f919dca8ab0fc4c7483b265c0ebc970e4753ae"));
+        assertThat(p2SHMultiSigAccount.getAddress().toBase58(), is("2NA9pNXxHVvv4qV5eLNDsAggcqAiy7BAbFb"));
+    }
+
+
+    /**
+     * 测试遗留地址（比特币最初的地址格式）的公钥转ECKey（用于验签）
+     */
+    @Test
+    public void testSignVerifyMessage(){
+        BitcoinOffLineSDK.CONFIG.setNetworkParameters(TestNet3Params.get());
+        String message="hello world";
+        String signatureBase64=BitcoinOffLineSDK.ADDRESS.signMessage("cP7kYMKRB6D68GzQgnkfRQm3gR7dhXjgZwbZ4vhQNds6qyfkavmP",message);
+        System.out.println(BitcoinOffLineSDK.ADDRESS.verifyMessage("0232017d9f60b74d0409402c96e7cf220595c2e431c476bda52ef88e6ac84729ba",message,signatureBase64));
+
+    }
+
+}
