@@ -10,6 +10,9 @@ import java.util.*;
 
 public class TransactionTest {
 
+    /**
+     * 测试常规交易
+     */
     @Test
     public void standardTransaction() {
         BitcoinOffLineSDK.CONFIG.setNetworkParameters(TestNet3Params.get());
@@ -63,6 +66,9 @@ public class TransactionTest {
         System.out.println("rawTransactionHex:" + rawTransactionHex);
     }
 
+    /**
+     * 测试多签交易
+     */
     @Test
     public void multiSignTransaction() {
         BitcoinOffLineSDK.CONFIG.setNetworkParameters(TestNet3Params.get());
