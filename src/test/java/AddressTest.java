@@ -18,6 +18,10 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
 
 public class AddressTest {
+
+    /**
+     * 测试创建普通地址
+     */
     @Test
     public void createNewAddress(){
         BitcoinOffLineSDK.CONFIG.setNetworkParameters(MainNetParams.get());
@@ -43,6 +47,9 @@ public class AddressTest {
         assertThat(address, is("1853DuTD8QPKrAyvEqKZZ4ryJ5JNbAnZwf"));
     }
 
+    /**
+     * 测试钱包可导入格式私钥的使用
+     */
     @Test
     public void testWIF() {
         List<String> mnemonicCode = Arrays.asList("weasel", "street", "dutch", "vintage", "legal", "network",
@@ -68,6 +75,9 @@ public class AddressTest {
         assertThat(address, is("1853DuTD8QPKrAyvEqKZZ4ryJ5JNbAnZwf"));
     }
 
+    /**
+     * 测试创建多签地址
+     */
     @Test
     public void testGenerateMultiSigAddress() {
         BitcoinOffLineSDK.CONFIG.setNetworkParameters(TestNet3Params.get());
@@ -82,15 +92,14 @@ public class AddressTest {
 
 
     /**
-     * 测试遗留地址（比特币最初的地址格式）的公钥转ECKey（用于验签）
+     * 测试消息签名、验签
      */
     @Test
     public void testSignVerifyMessage(){
         BitcoinOffLineSDK.CONFIG.setNetworkParameters(TestNet3Params.get());
         String message="hello world";
         String signatureBase64=BitcoinOffLineSDK.ADDRESS.signMessage("cP7kYMKRB6D68GzQgnkfRQm3gR7dhXjgZwbZ4vhQNds6qyfkavmP",message);
-        System.out.println(BitcoinOffLineSDK.ADDRESS.verifyMessage("0232017d9f60b74d0409402c96e7cf220595c2e431c476bda52ef88e6ac84729ba",message,signatureBase64));
-
+        assertThat(BitcoinOffLineSDK.ADDRESS.verifyMessage("0232017d9f60b74d0409402c96e7cf220595c2e431c476bda52ef88e6ac84729ba",message,signatureBase64),is(true));
     }
 
 }
