@@ -5,6 +5,9 @@ import dto.IMnemonic;
 import dto.ITransaction;
 import sdk.impl.BitcoinFactory;
 
+/**
+ * SDK服务
+ */
 public class BitcoinOffLineSDK {
 
     public static final IMnemonic MNEMONIC;

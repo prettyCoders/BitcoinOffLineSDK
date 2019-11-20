@@ -12,6 +12,9 @@ import dto.impl.TransactionImpl;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 
+/**
+ * SDK工厂
+ */
 public final class BitcoinFactory {
     private static final BitcoinFactory instance = new BitcoinFactory();
     private static Map<Class<? extends BitcoinBaseInterface>, BitcoinBaseInterface> serviceContainer = new ConcurrentHashMap();
