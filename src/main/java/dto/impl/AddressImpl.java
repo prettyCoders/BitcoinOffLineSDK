@@ -2,10 +2,7 @@ package dto.impl;
 
 import dto.IAddress;
 import entity.P2SHMultiSigAccount;
-import org.bitcoinj.core.Address;
-import org.bitcoinj.core.DumpedPrivateKey;
-import org.bitcoinj.core.ECKey;
-import org.bitcoinj.core.LegacyAddress;
+import org.bitcoinj.core.*;
 import org.bitcoinj.crypto.ChildNumber;
 import org.bitcoinj.crypto.DeterministicHierarchy;
 import org.bitcoinj.crypto.DeterministicKey;
@@ -18,6 +15,7 @@ import utils.Converter;
 
 import java.security.SignatureException;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -27,7 +25,8 @@ public class AddressImpl implements IAddress {
 
     /**
      * 通过种子和路径获取ECKey
-     * @param seed 种子
+     *
+     * @param seed         种子
      * @param accountIndex 账户索引
      * @param addressIndex 地址索引
      * @return ECKey
@@ -43,17 +42,25 @@ public class AddressImpl implements IAddress {
 
     /**
      * 通过ECKey获取地址
+     *
      * @param ecKey ECKey
      * @return 地址
      */
     @Override
     public String getLegacyAddress(ECKey ecKey) {
-        LegacyAddress legacyAddress=LegacyAddress.fromKey(BitcoinOffLineSDK.CONFIG.getNetworkParameters(),ecKey);
+        LegacyAddress legacyAddress = LegacyAddress.fromKey(BitcoinOffLineSDK.CONFIG.getNetworkParameters(), ecKey);
         return legacyAddress.toBase58();
+    }
+
+    @Override
+    public String getSegWitAddress(ECKey ecKey) {
+        SegwitAddress segwitAddress = SegwitAddress.fromKey(BitcoinOffLineSDK.CONFIG.getNetworkParameters(), ecKey);
+        return segwitAddress.toBech32();
     }
 
     /**
      * 通过ECKey获取钱包可导入格式的私钥
+     *
      * @param ecKey ECKey
      * @return 钱包可导入格式的私钥
      */
@@ -64,6 +71,7 @@ public class AddressImpl implements IAddress {
 
     /**
      * 通过ECKey获取公钥的十六进制格式文本
+     *
      * @param ecKey ECKey
      * @return 公钥的十六进制格式文本
      */
@@ -74,6 +82,7 @@ public class AddressImpl implements IAddress {
 
     /**
      * 通过ECKey获取私钥的十六进制格式文本
+     *
      * @param ecKey ECKey
      * @return 私钥的十六进制格式文本
      */
@@ -84,6 +93,7 @@ public class AddressImpl implements IAddress {
 
     /**
      * 通过ECKey获取私钥的字节数组
+     *
      * @param ecKey ECKey
      * @return 私钥的字节数组
      */
@@ -94,6 +104,7 @@ public class AddressImpl implements IAddress {
 
     /**
      * 通过十六进制公钥文本构建ECKey，通常用于验签
+     *
      * @param publicKeyHex 十六进制公钥文本
      * @return ECKey
      */
@@ -104,6 +115,7 @@ public class AddressImpl implements IAddress {
 
     /**
      * 通过钱包可导入格式私钥构建ECKey，通常用于导入账户
+     *
      * @param WIF 钱包可导入格式私钥
      * @return ECKey
      */
@@ -114,8 +126,9 @@ public class AddressImpl implements IAddress {
 
     /**
      * 生成多签地址
+     *
      * @param threshold 最低签名数量
-     * @param keys 公钥构建的ECKey列表
+     * @param keys      公钥构建的ECKey列表
      * @return P2SHMultiSigAccount对象
      */
     @Override
@@ -125,28 +138,30 @@ public class AddressImpl implements IAddress {
         //为给定的赎回脚本创建scriptPubKey
         Script script = ScriptBuilder.createP2SHOutputScript(redeemScript);
         //返回一个地址，该地址表示从给定的scriptPubKey中提取的脚本HASH
-        byte[] scriptHash=ScriptPattern.extractHashFromP2SH(script);
-        LegacyAddress multiSigAddress=LegacyAddress.fromScriptHash(BitcoinOffLineSDK.CONFIG.getNetworkParameters(),scriptHash);
+        byte[] scriptHash = ScriptPattern.extractHashFromP2SH(script);
+        LegacyAddress multiSigAddress = LegacyAddress.fromScriptHash(BitcoinOffLineSDK.CONFIG.getNetworkParameters(), scriptHash);
 //        Address multiSigAddress = Address.fromP2SHScript(BitcoinOffLineSDK.CONFIG.getNetworkParameters(), script);
         return new P2SHMultiSigAccount(redeemScript, multiSigAddress);
     }
 
     /**
      * 消息签名
-     * @param WIF 钱包可导入模式的私钥
+     *
+     * @param WIF     钱包可导入模式的私钥
      * @param message 待签名消息
      * @return 签名后的base64文本
      */
     @Override
     public String signMessage(String WIF, String message) {
-        ECKey ecKey=WIFToECKey(WIF);
+        ECKey ecKey = WIFToECKey(WIF);
         return ecKey.signMessage(message);
     }
 
     /**
      * 消息验签
-     * @param publicKeyHex 十六进制公钥
-     * @param message 消息
+     *
+     * @param publicKeyHex    十六进制公钥
+     * @param message         消息
      * @param signatureBase64 签名base64格式文本
      * @return 结果
      */
@@ -154,12 +169,34 @@ public class AddressImpl implements IAddress {
     public boolean verifyMessage(String publicKeyHex, String message, String signatureBase64) {
         ECKey ecKey = BitcoinOffLineSDK.ADDRESS.publicKeyToECKey(publicKeyHex);
         try {
-            ecKey.verifyMessage(message,signatureBase64);
+            ecKey.verifyMessage(message, signatureBase64);
         } catch (SignatureException e) {
             e.printStackTrace();
             return false;
         }
         return true;
+    }
+
+    @Override
+    public boolean isLegacyAddress(String addressBase58) {
+        try {
+            byte[] versionAndDataBytes = Base58.decodeChecked(addressBase58);
+            int version = versionAndDataBytes[0] & 0xFF;
+            return version == BitcoinOffLineSDK.CONFIG.getNetworkParameters().getAddressHeader() ||
+                    version == BitcoinOffLineSDK.CONFIG.getNetworkParameters().getP2SHHeader();
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    @Override
+    public boolean isSegWitAddress(String addressBase58) {
+        try {
+            Bech32.Bech32Data bechData = Bech32.decode(addressBase58);
+            return bechData.hrp.equals(BitcoinOffLineSDK.CONFIG.getNetworkParameters().getSegwitAddressHrp());
+        } catch (Exception e) {
+            return false;
+        }
     }
 
 }

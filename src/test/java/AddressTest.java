@@ -98,4 +98,27 @@ public class AddressTest {
         assertThat(BitcoinOffLineSDK.ADDRESS.verifyMessage("0232017d9f60b74d0409402c96e7cf220595c2e431c476bda52ef88e6ac84729ba",message,signatureBase64),is(true));
     }
 
+    @Test
+    public void testSegWitAddress(){
+        BitcoinOffLineSDK.CONFIG.setNetworkParameters(TestNet3Params.get());
+        List<String> mnemonicCode = Arrays.asList("weasel", "street", "dutch", "vintage", "legal", "network",
+                "squirrel", "sort", "stereo", "drum", "trumpet", "farm");
+        String passphrase = "your passphrase";
+        byte[] seed=BitcoinOffLineSDK.MNEMONIC.generateSeed(mnemonicCode,passphrase);
+
+        ECKey ecKey=BitcoinOffLineSDK.ADDRESS.getECKey(seed,0,0);
+        String address=BitcoinOffLineSDK.ADDRESS.getSegWitAddress(ecKey);
+        System.out.println(address);
+    }
+
+    @Test
+    public void testAddressType(){
+        BitcoinOffLineSDK.CONFIG.setNetworkParameters(TestNet3Params.get());
+        assertThat(BitcoinOffLineSDK.ADDRESS.isLegacyAddress("2NA9pNXxHVvv4qV5eLNDsAggcqAiy7BAbFb"),is(true));
+        assertThat(BitcoinOffLineSDK.ADDRESS.isLegacyAddress("mgtxRQnoUMGX5ncFp3kDFUk7xAJWg6XCSb"),is(true));
+        assertThat(BitcoinOffLineSDK.ADDRESS.isLegacyAddress("tb1qpq9z0xhzjnl6ulpqjxha6argch9jmha0m68yys"),is(false));
+        assertThat(BitcoinOffLineSDK.ADDRESS.isSegWitAddress("tb1qpq9z0xhzjnl6ulpqjxha6argch9jmha0m68yys"),is(true));
+        assertThat(BitcoinOffLineSDK.ADDRESS.isSegWitAddress("mgtxRQnoUMGX5ncFp3kDFUk7xAJWg6XCSb"),is(false));
+        assertThat(BitcoinOffLineSDK.ADDRESS.isSegWitAddress("2NA9pNXxHVvv4qV5eLNDsAggcqAiy7BAbFb"),is(false));
+    }
 }

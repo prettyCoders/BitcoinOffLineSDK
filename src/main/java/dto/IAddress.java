@@ -12,6 +12,8 @@ public interface IAddress extends BitcoinBaseInterface {
 
     String getLegacyAddress(ECKey ecKey);
 
+    String getSegWitAddress(ECKey ecKey);
+
     String getWIF(ECKey ecKey);
 
     String getPublicKeyAsHex(ECKey ecKey);
@@ -29,5 +31,9 @@ public interface IAddress extends BitcoinBaseInterface {
     String signMessage(String WIF,String message);
 
     boolean verifyMessage(String publicKeyHex,String message,String signatureBase64);
+
+    boolean isLegacyAddress(String addressBase58);
+
+    boolean isSegWitAddress(String addressBase58);
 
 }
