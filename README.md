@@ -13,7 +13,7 @@
 
 1、使用最新版bitcoinj-core，代码会有部分变动(已完成)
 
-2、支持隔离见证和Bech32
+2、支持新旧两种隔离见证，Nested SegWit (P2SH)和Native SegWit (bech32)
 
 3、支持闪电网络
 
