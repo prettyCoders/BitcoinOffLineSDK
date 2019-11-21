@@ -177,6 +177,11 @@ public class AddressImpl implements IAddress {
         return true;
     }
 
+    /**
+     * 判断是否是普通地址
+     * @param addressBase58 地址文本格式
+     * @return 结果
+     */
     @Override
     public boolean isLegacyAddress(String addressBase58) {
         try {
@@ -189,6 +194,11 @@ public class AddressImpl implements IAddress {
         }
     }
 
+    /**
+     * 判断是否是隔离见证地址
+     * @param addressBase58 地址文本格式
+     * @return 结果
+     */
     @Override
     public boolean isSegWitAddress(String addressBase58) {
         try {
@@ -196,6 +206,24 @@ public class AddressImpl implements IAddress {
             return bechData.hrp.equals(BitcoinOffLineSDK.CONFIG.getNetworkParameters().getSegwitAddressHrp());
         } catch (Exception e) {
             return false;
+        }
+    }
+
+    /**
+     * 根据脚本计算地址文本
+     * @param script 脚本
+     * @return 地址
+     */
+    @Override
+    public String scriptToAddress(Script script) {
+        NetworkParameters networkParameters = BitcoinOffLineSDK.CONFIG.getNetworkParameters();
+        Script.ScriptType scriptType = script.getScriptType();
+        if (scriptType == Script.ScriptType.P2PK || scriptType == Script.ScriptType.P2SH || scriptType == Script.ScriptType.P2PKH) {
+            return ((LegacyAddress) script.getToAddress(networkParameters)).toBase58();
+        } else if (scriptType == Script.ScriptType.P2WPKH || scriptType == Script.ScriptType.P2WSH) {
+            return ((SegwitAddress) script.getToAddress(networkParameters)).toBech32();
+        } else {
+            return null;
         }
     }
 

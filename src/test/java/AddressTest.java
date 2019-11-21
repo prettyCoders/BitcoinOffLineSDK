@@ -3,6 +3,7 @@ import entity.P2SHMultiSigAccount;
 import org.bitcoinj.core.ECKey;
 import org.bitcoinj.params.MainNetParams;
 import org.bitcoinj.params.TestNet3Params;
+import org.bitcoinj.script.Script;
 import org.junit.Test;
 import sdk.BitcoinOffLineSDK;
 import utils.Converter;
@@ -120,5 +121,13 @@ public class AddressTest {
         assertThat(BitcoinOffLineSDK.ADDRESS.isSegWitAddress("tb1qpq9z0xhzjnl6ulpqjxha6argch9jmha0m68yys"),is(true));
         assertThat(BitcoinOffLineSDK.ADDRESS.isSegWitAddress("mgtxRQnoUMGX5ncFp3kDFUk7xAJWg6XCSb"),is(false));
         assertThat(BitcoinOffLineSDK.ADDRESS.isSegWitAddress("2NA9pNXxHVvv4qV5eLNDsAggcqAiy7BAbFb"),is(false));
+    }
+
+    @Test
+    public void testScriptToAddress(){
+        BitcoinOffLineSDK.CONFIG.setNetworkParameters(TestNet3Params.get());
+        assertThat(BitcoinOffLineSDK.ADDRESS.scriptToAddress(new Script(Converter.hexToByte("a9148e2acc223101503adec422af45bcac35ff38b8ce87"))),is("2N6CwD92GzvAgAbGUj9UGSvVPoXfRkEE1Kh"));
+        assertThat(BitcoinOffLineSDK.ADDRESS.scriptToAddress(new Script(Converter.hexToByte("76a9149c50454569dd0567916f639e93a07e7dcdf0c74b88ac"))),is("mumTsH5L1hq7y9R7cofhxySryNUf3hXQSG"));
+        assertThat(BitcoinOffLineSDK.ADDRESS.scriptToAddress(new Script(Converter.hexToByte("0014080a279ae294ffae7c2091afdd7468c5cb2ddfaf"))),is("tb1qpq9z0xhzjnl6ulpqjxha6argch9jmha0m68yys"));
     }
 }

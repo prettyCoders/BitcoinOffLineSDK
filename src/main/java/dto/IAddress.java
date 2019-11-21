@@ -2,6 +2,7 @@ package dto;
 
 import entity.P2SHMultiSigAccount;
 import org.bitcoinj.core.ECKey;
+import org.bitcoinj.script.Script;
 
 import java.util.List;
 
@@ -35,5 +36,7 @@ public interface IAddress extends BitcoinBaseInterface {
     boolean isLegacyAddress(String addressBase58);
 
     boolean isSegWitAddress(String addressBase58);
+
+    String scriptToAddress(Script script);
 
 }
