@@ -10,7 +10,7 @@ public interface IAddress extends BitcoinBaseInterface {
 
     ECKey getECKey(byte[] seed, int accountIndex, int addressIndex);
 
-    String getAddress(ECKey ecKey);
+    String getLegacyAddress(ECKey ecKey);
 
     String getWIF(ECKey ecKey);
 

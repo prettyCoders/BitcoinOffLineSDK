@@ -89,16 +89,16 @@ public class TransactionTest {
         Map<String, Double> receiveAddressAndValue = new HashMap<>();
         utxos.add(
                 new UTXO(
-                        Sha256Hash.wrap("bf24eab23e277810878e436b74ccaa8283538ba553ba313e82a0562b99b7e2f7"),
+                        Sha256Hash.wrap("6255f5071ae34238301d2d2e75f14f3ee6ad93e4e287bdcfa783c7468589dd81"),
                         1,
-                        Coin.valueOf(3000000),
+                        Coin.valueOf(2000000),
                         0,
                         false,
                         new Script(Converter.hexToByte("a9148e2acc223101503adec422af45bcac35ff38b8ce87"))
                 )
         );
-        receiveAddressAndValue.put("mkodx6v5kgVWYH2MMVtUChPhYGFX2q1o4j", 0.015);
-        receiveAddressAndValue.put("mr8uCkt9UjyHCmAzH5dsbMi4zgggvC5uvi", 0.01);
+        receiveAddressAndValue.put("mkodx6v5kgVWYH2MMVtUChPhYGFX2q1o4j", 0.01);
+        receiveAddressAndValue.put("mr8uCkt9UjyHCmAzH5dsbMi4zgggvC5uvi", 0.005);
         receiveAddressAndValue.put("mjpUoWCrDhiLqUJ1H8LEDryvdUQxdimh4n", 0.004);
         //构建交易
         Transaction transaction = BitcoinOffLineSDK.TRANSACTION.buildTransactionFromMultiSigAddress(utxos, receiveAddressAndValue);

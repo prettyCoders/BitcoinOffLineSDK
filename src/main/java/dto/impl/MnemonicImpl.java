@@ -19,7 +19,7 @@ public class MnemonicImpl implements IMnemonic {
      */
     public List<String> generateMnemonicCode() {
         SecureRandom secureRandom = new SecureRandom();
-        DeterministicSeed ds = new DeterministicSeed(secureRandom, 128, "", System.currentTimeMillis() / 1000);
+        DeterministicSeed ds = new DeterministicSeed(secureRandom, 128, "");
         return ds.getMnemonicCode();
     }
 

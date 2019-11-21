@@ -5,12 +5,14 @@ import entity.P2SHMultiSigAccount;
 import org.bitcoinj.core.Address;
 import org.bitcoinj.core.DumpedPrivateKey;
 import org.bitcoinj.core.ECKey;
+import org.bitcoinj.core.LegacyAddress;
 import org.bitcoinj.crypto.ChildNumber;
 import org.bitcoinj.crypto.DeterministicHierarchy;
 import org.bitcoinj.crypto.DeterministicKey;
 import org.bitcoinj.crypto.HDKeyDerivation;
 import org.bitcoinj.script.Script;
 import org.bitcoinj.script.ScriptBuilder;
+import org.bitcoinj.script.ScriptPattern;
 import sdk.BitcoinOffLineSDK;
 import utils.Converter;
 
@@ -45,8 +47,9 @@ public class AddressImpl implements IAddress {
      * @return 地址
      */
     @Override
-    public String getAddress(ECKey ecKey) {
-        return ecKey.toAddress(BitcoinOffLineSDK.CONFIG.getNetworkParameters()).toBase58();
+    public String getLegacyAddress(ECKey ecKey) {
+        LegacyAddress legacyAddress=LegacyAddress.fromKey(BitcoinOffLineSDK.CONFIG.getNetworkParameters(),ecKey);
+        return legacyAddress.toBase58();
     }
 
     /**
@@ -122,7 +125,9 @@ public class AddressImpl implements IAddress {
         //为给定的赎回脚本创建scriptPubKey
         Script script = ScriptBuilder.createP2SHOutputScript(redeemScript);
         //返回一个地址，该地址表示从给定的scriptPubKey中提取的脚本HASH
-        Address multiSigAddress = Address.fromP2SHScript(BitcoinOffLineSDK.CONFIG.getNetworkParameters(), script);
+        byte[] scriptHash=ScriptPattern.extractHashFromP2SH(script);
+        LegacyAddress multiSigAddress=LegacyAddress.fromScriptHash(BitcoinOffLineSDK.CONFIG.getNetworkParameters(),scriptHash);
+//        Address multiSigAddress = Address.fromP2SHScript(BitcoinOffLineSDK.CONFIG.getNetworkParameters(), script);
         return new P2SHMultiSigAccount(redeemScript, multiSigAddress);
     }
 

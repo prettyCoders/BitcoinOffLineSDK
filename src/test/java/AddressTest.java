@@ -1,16 +1,12 @@
 import com.google.common.collect.ImmutableList;
 import entity.P2SHMultiSigAccount;
-import org.bitcoinj.core.Address;
 import org.bitcoinj.core.ECKey;
-import org.bitcoinj.crypto.ChildNumber;
 import org.bitcoinj.params.MainNetParams;
 import org.bitcoinj.params.TestNet3Params;
 import org.junit.Test;
 import sdk.BitcoinOffLineSDK;
-import sdk.BitcoinSDKConfig;
 import utils.Converter;
 
-import java.security.SignatureException;
 import java.util.Arrays;
 import java.util.List;
 
@@ -31,19 +27,19 @@ public class AddressTest {
         byte[] seed=BitcoinOffLineSDK.MNEMONIC.generateSeed(mnemonicCode,passphrase);
 
         ECKey ecKey=BitcoinOffLineSDK.ADDRESS.getECKey(seed,0,0);
-        String address=BitcoinOffLineSDK.ADDRESS.getAddress(ecKey);
+        String address=BitcoinOffLineSDK.ADDRESS.getLegacyAddress(ecKey);
         assertThat(address, is("1jWa6a9y4eoVJtGSH5bMo2krPq2mXkJtz"));
 
         ecKey=BitcoinOffLineSDK.ADDRESS.getECKey(seed,1,0);
-        address=BitcoinOffLineSDK.ADDRESS.getAddress(ecKey);
+        address=BitcoinOffLineSDK.ADDRESS.getLegacyAddress(ecKey);
         assertThat(address, is("141tHfGH61XUgMqU6SuqoS8osW1sPeCZ96"));
 
         ecKey=BitcoinOffLineSDK.ADDRESS.getECKey(seed,1,1);
-        address=BitcoinOffLineSDK.ADDRESS.getAddress(ecKey);
+        address=BitcoinOffLineSDK.ADDRESS.getLegacyAddress(ecKey);
         assertThat(address, is("1Kwk9VW5XbvmCYy74c4Fja6KugRfHSDTa1"));
 
         ecKey=BitcoinOffLineSDK.ADDRESS.getECKey(seed,1,10);
-        address=BitcoinOffLineSDK.ADDRESS.getAddress(ecKey);
+        address=BitcoinOffLineSDK.ADDRESS.getLegacyAddress(ecKey);
         assertThat(address, is("1853DuTD8QPKrAyvEqKZZ4ryJ5JNbAnZwf"));
     }
 
@@ -59,7 +55,7 @@ public class AddressTest {
 
         ECKey ecKey=BitcoinOffLineSDK.ADDRESS.getECKey(seed,1,10);
 
-        String address=BitcoinOffLineSDK.ADDRESS.getAddress(ecKey);
+        String address=BitcoinOffLineSDK.ADDRESS.getLegacyAddress(ecKey);
         byte[] pubKey=ecKey.getPubKey();
         byte[] pubKeyHash=ecKey.getPubKeyHash();
         System.out.println(Converter.byteToHex(pubKey));

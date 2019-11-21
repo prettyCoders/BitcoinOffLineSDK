@@ -43,7 +43,7 @@ public class TransactionImpl implements ITransaction {
             String receiveAddress = (String) entry.getKey();
             Coin value = Coin.valueOf(Converter.bitcoinToSatoshis((Double) entry.getValue()));
             //接收地址
-            Address receiver = Address.fromBase58(networkParameters, receiveAddress);
+            LegacyAddress receiver = LegacyAddress.fromBase58(networkParameters, receiveAddress);
             //添加OUTPUT
             transaction.addOutput(value, receiver);
         }
@@ -126,7 +126,12 @@ public class TransactionImpl implements ITransaction {
                     ScriptChunk chunk = iterator.next();
 
                     if (iterator.hasNext() && chunk.opcode != 0) {
-                        TransactionSignature transactionSignature = TransactionSignature.decodeFromBitcoin(Objects.requireNonNull(chunk.data), false);
+                        TransactionSignature transactionSignature = null;
+                        try {
+                            transactionSignature = TransactionSignature.decodeFromBitcoin(Objects.requireNonNull(chunk.data), false,false);
+                        } catch (SignatureDecodeException e) {
+                            e.printStackTrace();
+                        }
                         signatureList.add(transactionSignature);
                     } else {
                         redeemScript = new Script(Objects.requireNonNull(chunk.data));

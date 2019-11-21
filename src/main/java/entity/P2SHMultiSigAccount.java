@@ -2,6 +2,7 @@ package entity;
 
 import lombok.Data;
 import org.bitcoinj.core.Address;
+import org.bitcoinj.core.LegacyAddress;
 import org.bitcoinj.script.Script;
 
 /**
@@ -16,9 +17,9 @@ public class P2SHMultiSigAccount {
     /**
      * 和脚本关联的地址对象
      */
-    protected Address address;
+    protected LegacyAddress address;
 
-    public P2SHMultiSigAccount(Script redeemScript, Address address) {
+    public P2SHMultiSigAccount(Script redeemScript, LegacyAddress address) {
         this.redeemScript = redeemScript;
         this.address = address;
     }
