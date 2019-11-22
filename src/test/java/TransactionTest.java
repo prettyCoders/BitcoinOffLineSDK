@@ -1,12 +1,18 @@
 import entity.P2SHMultiSigAccount;
 import org.bitcoinj.core.*;
+import org.bitcoinj.crypto.TransactionSignature;
 import org.bitcoinj.params.TestNet3Params;
 import org.bitcoinj.script.Script;
+import org.bitcoinj.script.ScriptBuilder;
 import org.junit.Test;
 import sdk.BitcoinOffLineSDK;
 import utils.Converter;
 
 import java.util.*;
+
+import static org.bitcoinj.core.Utils.HEX;
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertTrue;
 
 public class TransactionTest {
 
@@ -64,6 +70,55 @@ public class TransactionTest {
         }
         String rawTransactionHex = Converter.byteToHex(transaction.bitcoinSerialize());
         System.out.println("rawTransactionHex:" + rawTransactionHex);
+    }
+
+    @Test
+    public void testSendFromSegWitAddress(){
+        BitcoinOffLineSDK.CONFIG.setNetworkParameters(TestNet3Params.get());
+        List<String> mnemonicCode = Arrays.asList("weasel", "street", "dutch", "vintage", "legal", "network",
+                "squirrel", "sort", "stereo", "drum", "trumpet", "farm");
+        String passphrase = "your passphrase";
+        byte[] seed=BitcoinOffLineSDK.MNEMONIC.generateSeed(mnemonicCode,passphrase);
+
+        ECKey ecKey=BitcoinOffLineSDK.ADDRESS.getECKey(seed,0,0);
+
+        Transaction tx=new Transaction(BitcoinOffLineSDK.CONFIG.getNetworkParameters());
+
+        Map<String, Double> receiveAddressAndValue = new HashMap<>();
+        receiveAddressAndValue.put("mumTsH5L1hq7y9R7cofhxySryNUf3hXQSG", 0.019);
+        BitcoinOffLineSDK.TRANSACTION.addOutPut(tx, receiveAddressAndValue);
+
+
+
+        //第一种方式,用原始交易来构建新的input
+//        String preTxHex="0100000001f497bc827f7c9fb7ad5d806a1f5461fb76e2e169a41223d0d1756f2262a94629000000006a47304402200486df608dcf7d05ea9570ad79727a92d9c06ae2e966eb19701969b8f55462d6022010f871ebcecba9dc3ac017b4723b9b0d04462e3d7f7569e1a9771ffa3a32c57181210248857ec3b6b80aa564a5ae33e0b6ff2e42f1ff9056278d279682dd1b78311fa4ffffffff02043d0100000000001976a9149c50454569dd0567916f639e93a07e7dcdf0c74b88ac60ae0a0000000000160014080a279ae294ffae7c2091afdd7468c5cb2ddfaf00000000";
+//        Transaction preTx = new Transaction(BitcoinOffLineSDK.CONFIG.getNetworkParameters(), HEX.decode(preTxHex));
+//        TransactionInput transactionInput=tx.addInput(preTx.getOutput(1));
+//        tx.addSignedInput(tx0.getOutput(1),ecKey); //不好使，不取utxo的value报空指针
+
+        //第二种方式,用UTXO构建新的input
+        UTXO utxo = new UTXO(
+                Sha256Hash.wrap("2946a962226f75d1d02312a469e1e276fb61541f6a805dadb79f7c7f82bc97f4"),
+                1,
+                Coin.valueOf(2000000),
+                0,
+                false,
+                new Script(Converter.hexToByte("0014080a279ae294ffae7c2091afdd7468c5cb2ddfaf"))
+        );
+
+        TransactionInput transactionInput=tx.addInput(utxo.getHash(),utxo.getIndex(),utxo.getScript());
+
+        //计算见证签名
+        Script scriptCode = new ScriptBuilder().data(ScriptBuilder.createP2PKHOutputScript(ecKey).getProgram()).build();
+        TransactionSignature txSig1 = tx.calculateWitnessSignature(0, ecKey,
+                scriptCode, utxo.getValue(),
+                Transaction.SigHash.ALL, false);
+
+        transactionInput.setWitness(TransactionWitness.redeemP2WPKH(txSig1, ecKey));
+        //隔离见证的input不需要scriptSig
+        transactionInput.clearScriptBytes();
+        System.out.println( HEX.encode(tx.bitcoinSerialize()));
+
     }
 
     /**
