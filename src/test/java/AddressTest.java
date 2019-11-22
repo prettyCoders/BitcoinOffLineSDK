@@ -5,6 +5,7 @@ import org.bitcoinj.params.MainNetParams;
 import org.bitcoinj.params.TestNet3Params;
 import org.bitcoinj.script.Script;
 import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
 import sdk.BitcoinOffLineSDK;
 import utils.Converter;
 
@@ -15,6 +16,11 @@ import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
 
 public class AddressTest {
+
+    @BeforeEach
+    public void setup() {
+        BitcoinOffLineSDK.CONFIG.setNetworkParameters(TestNet3Params.get());
+    }
 
     /**
      * 测试创建普通地址
@@ -49,6 +55,7 @@ public class AddressTest {
      */
     @Test
     public void testWIF() {
+        BitcoinOffLineSDK.CONFIG.setNetworkParameters(MainNetParams.get());
         List<String> mnemonicCode = Arrays.asList("weasel", "street", "dutch", "vintage", "legal", "network",
                 "squirrel", "sort", "stereo", "drum", "trumpet", "farm");
         String passphrase = "your passphrase";
@@ -57,11 +64,6 @@ public class AddressTest {
         ECKey ecKey=BitcoinOffLineSDK.ADDRESS.getECKey(seed,1,10);
 
         String address=BitcoinOffLineSDK.ADDRESS.getLegacyAddress(ecKey);
-        byte[] pubKey=ecKey.getPubKey();
-        byte[] pubKeyHash=ecKey.getPubKeyHash();
-        System.out.println(Converter.byteToHex(pubKey));
-        System.out.println(Converter.byteToHex(pubKeyHash));
-
 
         String privateKeyAsHex = BitcoinOffLineSDK.ADDRESS.getPrivateKeyAsHex(ecKey);
         String publicKeyAsHex =  BitcoinOffLineSDK.ADDRESS.getPublicKeyAsHex(ecKey);
@@ -109,7 +111,7 @@ public class AddressTest {
 
         ECKey ecKey=BitcoinOffLineSDK.ADDRESS.getECKey(seed,0,0);
         String address=BitcoinOffLineSDK.ADDRESS.getSegWitAddress(ecKey);
-        System.out.println(address);
+        assertThat(address,is("tb1qpq9z0xhzjnl6ulpqjxha6argch9jmha0m68yys"));
     }
 
     @Test

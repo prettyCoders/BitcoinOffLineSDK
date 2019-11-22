@@ -1,6 +1,7 @@
 package dto.impl;
 
 import dto.ITransaction;
+import entity.UTXOKey;
 import org.bitcoinj.core.*;
 import org.bitcoinj.crypto.TransactionSignature;
 import org.bitcoinj.script.Script;
@@ -19,22 +20,74 @@ public class TransactionImpl implements ITransaction {
 
 
     /**
-     * 添加交易的输出
-     *
-     * @param transaction            交易
-     * @param receiveAddressAndValue 接收地址和金额
+     * 构建并签名Legacy(遗留、常规)转账交易，包含P2PK,P2PKH,P2SH,P2WPKH,P2WSH
+     * @param utxoKeys UTXOKey列表
+     * @param receiveAddressAndValue 接收地址和金额列表
+     * @return 构建并签名好的交易
      */
     @Override
-    public void addOutPut(Transaction transaction, Map<String, Double> receiveAddressAndValue) {
+    public Transaction buildLegacyTransactionWithSigners(List<UTXOKey> utxoKeys, Map<String, Double> receiveAddressAndValue) {
+        //新建交易
+        Transaction transaction = new Transaction(BitcoinOffLineSDK.CONFIG.getNetworkParameters());
+        //添加输出列表
         addOutputs(transaction, receiveAddressAndValue);
+
+        //遍历UTXO并签名
+        for (UTXOKey utxoKey : utxoKeys) {
+            UTXO utxo = utxoKey.getUtxo();
+            //获取UTXO脚本类型
+            Script script = utxo.getScript();
+            Script.ScriptType scriptType = script.getScriptType();
+            //区分legacy和SegWit的utxo
+            if (scriptType == Script.ScriptType.P2PK || scriptType == Script.ScriptType.P2PKH || scriptType == Script.ScriptType.P2SH) {
+                signLegacyTransaction(transaction, utxo, utxoKey.getEcKey());
+            } else if (scriptType == Script.ScriptType.P2WPKH || scriptType == Script.ScriptType.P2WSH) {
+                signSegWitTransaction(transaction, utxo, utxoKey.getEcKey());
+            }
+        }
+        return transaction;
     }
+
+    /**
+     * 签名Legacy(遗留、常规)转账交易，包含P2PK,P2PKH,P2SH
+     * @param transaction 待签名交易
+     * @param utxo UTXO
+     * @param ecKey ECKey
+     */
+    private void signLegacyTransaction(Transaction transaction, UTXO utxo, ECKey ecKey) {
+        TransactionOutPoint outPoint = new TransactionOutPoint(BitcoinOffLineSDK.CONFIG.getNetworkParameters(), utxo.getIndex(), utxo.getHash());
+        transaction.addSignedInput(outPoint, utxo.getScript(), ecKey, Transaction.SigHash.ALL, true);
+    }
+
+    /**
+     * 签名Legacy(遗留、常规)转账交易，包含P2WPKH,P2WSH
+     * @param transaction 待签名交易
+     * @param utxo UTXO
+     * @param ecKey ECKey
+     */
+    private void signSegWitTransaction(Transaction transaction, UTXO utxo, ECKey ecKey) {
+        //构建新交易的input
+        TransactionInput transactionInput=transaction.addInput(utxo.getHash(),utxo.getIndex(),utxo.getScript());
+        //计算见证签名
+        Script scriptCode = new ScriptBuilder().data(ScriptBuilder.createP2PKHOutputScript(ecKey).getProgram()).build();
+        TransactionSignature txSig1 = transaction.calculateWitnessSignature(transactionInput.getIndex(), ecKey,
+                scriptCode, utxo.getValue(),
+                Transaction.SigHash.ALL, false);
+
+        //设置input的交易见证
+        transactionInput.setWitness(TransactionWitness.redeemP2WPKH(txSig1, ecKey));
+        //隔离见证的input不需要scriptSig
+        transactionInput.clearScriptBytes();
+    }
+
+
+
 
     /**
      * 添加交易输出列表
      *
      * @param transaction            待添加outputs的交易
      * @param receiveAddressAndValue 接收地址和金额
-     * @return 添加完成的交易
      */
     private static void addOutputs(Transaction transaction, Map<String, Double> receiveAddressAndValue) {
         //构建outputs
@@ -49,10 +102,7 @@ public class TransactionImpl implements ITransaction {
             } else {
                 throw new AddressFormatException.InvalidPrefix("No network found for " + receiveAddress);
             }
-
             Coin value = Coin.valueOf(Converter.bitcoinToSatoshis((Double) entry.getValue()));
-            //接收地址
-//            LegacyAddress receiver = LegacyAddress.fromBase58(networkParameters, receiveAddress);
             //添加OUTPUT
             transaction.addOutput(value, address);
 
@@ -60,28 +110,13 @@ public class TransactionImpl implements ITransaction {
     }
 
     /**
-     * 添加UTXO(inputs)，并签名
-     *
-     * @param transaction 交易
-     * @param utxo        utxo
-     * @param ecKey       ECKey
-     */
-    @Override
-    public void addUTXOSign(Transaction transaction, UTXO utxo, ECKey ecKey) {
-        TransactionOutPoint outPoint = new TransactionOutPoint(BitcoinOffLineSDK.CONFIG.getNetworkParameters(), utxo.getIndex(), utxo.getHash());
-        transaction.addSignedInput(outPoint, utxo.getScript(), ecKey, Transaction.SigHash.ALL, true);
-    }
-
-    /**
-     * 构建多签转账交易
-     *
-     * @param utxos                  utxo列表
-     * @param receiveAddressAndValue 接收地址和金额
+     * 构建待签名交易
+     * @param utxos UTXO
+     * @param receiveAddressAndValue 接收地址和金额列表
      * @return 交易
      */
     @Override
-    public Transaction buildTransactionFromMultiSigAddress
-    (List<UTXO> utxos, Map<String, Double> receiveAddressAndValue) {
+    public Transaction buildTransaction(List<UTXO> utxos, Map<String, Double> receiveAddressAndValue) {
         //新建交易
         Transaction transaction = new Transaction(BitcoinOffLineSDK.CONFIG.getNetworkParameters());
         //构建Inputs
@@ -123,7 +158,6 @@ public class TransactionImpl implements ITransaction {
 
                 //将脚本添加进input
                 input.setScriptSig(inputScript);
-//                input.verify();
             } else {
                 // 获取输入的脚本元素列表(可以理解为操作码列表)
                 Script inputScript = transaction.getInput(i).getScriptSig();
@@ -169,7 +203,6 @@ public class TransactionImpl implements ITransaction {
 
                 //更新新的脚本
                 input.setScriptSig(inputScript);
-//                input.verify();
             }
         }
     }

@@ -10,6 +10,7 @@ import org.bitcoinj.crypto.HDKeyDerivation;
 import org.bitcoinj.script.Script;
 import org.bitcoinj.script.ScriptBuilder;
 import org.bitcoinj.script.ScriptPattern;
+import org.bouncycastle.util.encoders.Hex;
 import sdk.BitcoinOffLineSDK;
 import utils.Converter;
 
@@ -41,10 +42,10 @@ public class AddressImpl implements IAddress {
     }
 
     /**
-     * 通过ECKey获取地址
+     * 通过ECKey获取P2PKH地址
      *
      * @param ecKey ECKey
-     * @return 地址
+     * @return Base58编码的地址文本
      */
     @Override
     public String getLegacyAddress(ECKey ecKey) {
@@ -52,6 +53,11 @@ public class AddressImpl implements IAddress {
         return legacyAddress.toBase58();
     }
 
+    /**
+     * 获取隔离见证地址
+     * @param ecKey ECKey
+     * @return bech32编码后的地址文本
+     */
     @Override
     public String getSegWitAddress(ECKey ecKey) {
         SegwitAddress segwitAddress = SegwitAddress.fromKey(BitcoinOffLineSDK.CONFIG.getNetworkParameters(), ecKey);
@@ -110,7 +116,7 @@ public class AddressImpl implements IAddress {
      */
     @Override
     public ECKey publicKeyToECKey(String publicKeyHex) {
-        return ECKey.fromPublicOnly(Converter.hexToByte(publicKeyHex));
+        return ECKey.fromPublicOnly(Hex.decode(publicKeyHex));
     }
 
     /**
