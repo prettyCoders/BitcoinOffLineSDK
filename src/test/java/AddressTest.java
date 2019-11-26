@@ -1,19 +1,30 @@
 import com.google.common.collect.ImmutableList;
 import entity.P2SHMultiSigAccount;
 import org.bitcoinj.core.ECKey;
+import org.bitcoinj.core.LegacyAddress;
+import org.bitcoinj.core.Sha256Hash;
+import org.bitcoinj.crypto.ChildNumber;
+import org.bitcoinj.crypto.DeterministicHierarchy;
+import org.bitcoinj.crypto.DeterministicKey;
 import org.bitcoinj.params.MainNetParams;
 import org.bitcoinj.params.TestNet3Params;
 import org.bitcoinj.script.Script;
+import org.bouncycastle.util.encoders.Base64;
+import org.bouncycastle.util.encoders.Hex;
 import org.junit.Test;
 import org.junit.jupiter.api.BeforeEach;
 import sdk.BitcoinOffLineSDK;
 import utils.Converter;
 
+import java.math.BigInteger;
+import java.security.SignatureException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
 import static org.hamcrest.CoreMatchers.is;
 import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
 
 public class AddressTest {
 
@@ -131,5 +142,30 @@ public class AddressTest {
         assertThat(BitcoinOffLineSDK.ADDRESS.scriptToAddress(new Script(Converter.hexToByte("a9148e2acc223101503adec422af45bcac35ff38b8ce87"))),is("2N6CwD92GzvAgAbGUj9UGSvVPoXfRkEE1Kh"));
         assertThat(BitcoinOffLineSDK.ADDRESS.scriptToAddress(new Script(Converter.hexToByte("76a9149c50454569dd0567916f639e93a07e7dcdf0c74b88ac"))),is("mumTsH5L1hq7y9R7cofhxySryNUf3hXQSG"));
         assertThat(BitcoinOffLineSDK.ADDRESS.scriptToAddress(new Script(Converter.hexToByte("0014080a279ae294ffae7c2091afdd7468c5cb2ddfaf"))),is("tb1qpq9z0xhzjnl6ulpqjxha6argch9jmha0m68yys"));
+    }
+
+    @Test
+    public void testExtendedPublicKeyToPublicKey(){
+        DeterministicKey xpub=DeterministicKey.deserializeB58("xpub6EwHXXLWjhe22uYULsvj19f5fvjKXZPucprenCNjMFADEAUFUhSXw31YRtGq1APaQGHmQA4LGunTnBqmREQoFtNh4d26qXuKcVUvU16daf7",MainNetParams.get());
+        System.out.println(xpub.getPublicKeyAsHex());
+        System.out.println(LegacyAddress.fromPubKeyHash(MainNetParams.get(),xpub.getPubKeyHash()).toBase58());
+        System.out.println(xpub.getPathAsString());
+
+
+        DeterministicHierarchy deterministicHierarchy = new DeterministicHierarchy(xpub);
+        List<ChildNumber> parentPath = new ArrayList<>();
+//        parentPath.add(new ChildNumber(32));
+//        parentPath.add(new ChildNumber(0));
+        parentPath.add(new ChildNumber(0));
+//        parentPath.add(new ChildNumber(0));
+//
+        DeterministicKey deterministicKey =deterministicHierarchy.deriveChild(parentPath, false, true, new ChildNumber(0));
+        System.out.println(deterministicKey.getPublicKeyAsHex());
+        System.out.println(LegacyAddress.fromPubKeyHash(MainNetParams.get(),deterministicKey.getPubKeyHash()).toBase58());
+        try {
+            deterministicKey.verifyMessage("74dc031cf3b23fbfe8115b1c262f8d142c64231b07afdacbab82bcc2fb30a461","IBPTh2TFbFgGLhbvovnaruQngceuXHz4fitu7PUPwNA2SC3d6She0AryneRRq+x8nNlybVXFmNDqbNoNZ5Q4oTo=");
+        } catch (SignatureException e) {
+            e.printStackTrace();
+        }
     }
 }

@@ -1,8 +1,15 @@
 import entity.P2SHMultiSigAccount;
+import entity.SignatureData;
 import entity.UTXOKey;
 import org.bitcoinj.core.*;
+import org.bitcoinj.crypto.ChildNumber;
+import org.bitcoinj.crypto.DeterministicHierarchy;
+import org.bitcoinj.crypto.DeterministicKey;
+import org.bitcoinj.params.MainNetParams;
 import org.bitcoinj.params.TestNet3Params;
 import org.bitcoinj.script.Script;
+import org.bouncycastle.util.encoders.Base64;
+import org.bouncycastle.util.encoders.Hex;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import sdk.BitcoinOffLineSDK;
@@ -10,9 +17,12 @@ import utils.Converter;
 import static org.junit.Assert.assertThat;
 import static org.hamcrest.CoreMatchers.is;
 
+import java.math.BigInteger;
+import java.security.SignatureException;
 import java.util.*;
 
 import static org.bitcoinj.core.Utils.HEX;
+import static org.junit.Assert.assertTrue;
 
 /**
  * 测试多种地址类型之间的转账
@@ -357,4 +367,131 @@ public class TransactionTest {
         assertThat(transactionHex,is("010000000221307e70dbeb4be3be72656c199a3286ccb6948f182c77a3aec0a55ecb14e25b01000000fdfe0000483045022100f2c56653808f231ed5f4f7f92bab9d4884557b9823f311221f06d556cb0c612202204338d44a1fe284fda10a593a1e902f2b7967d46ce908b4624ce31e02e2700dfc01483045022100c3bf2f9f00a21e31bb83abcb78c9203e57fbf9523bf435ae5c0c4b0a9c8b6ba102201e2fcc1f61bc4d85c82067123fcfbba98ebbebb25dd15b9abca0ed7d8caae6a3014c6952210257a59041c72e9234adffa5adaba4a49ba38de28cc6a3c1ef4883fbb02b93a6c821030f1b97e4df51bed157b0d030dbe4356caf06e986e441d1c7077915431d13a9da21034d7e772482631bde32b32ea46203b77cf18ed75da19ba324e1692fa28706e70253aeffffffffe4cce4d916edb0e106c1713238a69a80749c5c6f20cc8eb187c793f000206f6a01000000fc00473044022056c5508a8f5ba6fb2a099ab3fa58c00abb770e8e3c4f48a2874055c26eeb32ae02205f86e7db1618c1c1422c910585aa74fd132f9dc5cc66de6b3f7e1f0d17121f6b0147304402203e87eea89d3ce11e92401049b8c845c1eabd2e7556447ae9b64c94670d2959b5022041967578a6a6fa407293b8b46b24b31dc3e03950c6c16f3ea169fe80496f0d24014c6952210257a59041c72e9234adffa5adaba4a49ba38de28cc6a3c1ef4883fbb02b93a6c821030f1b97e4df51bed157b0d030dbe4356caf06e986e441d1c7077915431d13a9da21034d7e772482631bde32b32ea46203b77cf18ed75da19ba324e1692fa28706e70253aeffffffff0288130000000000001600148235ad214acba375c1e85972c432388706e2d328a00f0000000000001976a91414b4266839352fed86052061482754ef784f06ba88ac00000000"));
         assertThat(transaction.getTxId().toString(),is("8a0e4aa27338291ab569eeac9a5679f75d99448e879473efb9a048861806f880"));
     }
+
+    @Test
+    public void MultiSign_TO_P2PKH_P2WPKH2() {
+        //创建多签地址
+        //5be214cb5ea5c0aea3772c188f94b6cc86329a196c6572bee34bebdb707e3021
+        //6a6f2000f093c787b18ecc206f5c9c74809aa6383271c106e1b0ed16d9e4cce4
+        ECKey ecKeyMultiSignA = BitcoinOffLineSDK.ADDRESS.getECKey(seed, 0, 10);
+        String publicKeyA=BitcoinOffLineSDK.ADDRESS.getPublicKeyAsHex(ecKeyMultiSignA);
+        assertThat(publicKeyA,is("0257a59041c72e9234adffa5adaba4a49ba38de28cc6a3c1ef4883fbb02b93a6c8"));
+        assertThat(BitcoinOffLineSDK.ADDRESS.getLegacyAddress(ecKeyMultiSignA),is("myfyq3MYWJNAvfWUpg92ZyCiDGKin6J8Ty"));
+
+        ECKey ecKeyMultiSignB = BitcoinOffLineSDK.ADDRESS.getECKey(seed, 0, 11);
+        String publicKeyB=BitcoinOffLineSDK.ADDRESS.getPublicKeyAsHex(ecKeyMultiSignB);
+        assertThat(publicKeyB,is("030f1b97e4df51bed157b0d030dbe4356caf06e986e441d1c7077915431d13a9da"));
+        assertThat(BitcoinOffLineSDK.ADDRESS.getLegacyAddress(ecKeyMultiSignB),is("mjGHmnkeMh5DgKxyAcPbMCWw1vUdYv6tAN"));
+
+        ECKey ecKeyMultiSignC = BitcoinOffLineSDK.ADDRESS.getECKey(seed, 0, 12);
+        String publicKeyC=BitcoinOffLineSDK.ADDRESS.getPublicKeyAsHex(ecKeyMultiSignC);
+        assertThat(publicKeyC,is("034d7e772482631bde32b32ea46203b77cf18ed75da19ba324e1692fa28706e702"));
+        assertThat(BitcoinOffLineSDK.ADDRESS.getLegacyAddress(ecKeyMultiSignC),is("mfZRBBybuzFNcj18RPfqLUJDf4Xuwp7AAo"));
+
+        List<ECKey> ecKeys=new ArrayList<>();
+        ecKeys.add(BitcoinOffLineSDK.ADDRESS.publicKeyToECKey(publicKeyA));
+        ecKeys.add(BitcoinOffLineSDK.ADDRESS.publicKeyToECKey(publicKeyB));
+        ecKeys.add(BitcoinOffLineSDK.ADDRESS.publicKeyToECKey(publicKeyC));
+        P2SHMultiSigAccount p2SHMultiSigAccount=BitcoinOffLineSDK.ADDRESS.generateMultiSigAddress(2,ecKeys);
+        assertThat(Converter.byteToHex(p2SHMultiSigAccount.getRedeemScript().getProgram()), is("52210257a59041c72e9234adffa5adaba4a49ba38de28cc6a3c1ef4883fbb02b93a6c821030f1b97e4df51bed157b0d030dbe4356caf06e986e441d1c7077915431d13a9da21034d7e772482631bde32b32ea46203b77cf18ed75da19ba324e1692fa28706e70253ae"));
+        assertThat(p2SHMultiSigAccount.getAddress().toBase58(), is("2NGVEx8a2WThySFqgLCqhFdArb9qQ5eY3kY"));
+
+        //消费多签地址上的资产
+        List<UTXO> utxos = new ArrayList<>();
+        UTXO utxo=new UTXO(
+                Sha256Hash.wrap("5be214cb5ea5c0aea3772c188f94b6cc86329a196c6572bee34bebdb707e3021"),
+                1,
+                Coin.valueOf(Converter.bitcoinToSatoshis( 0.0001)),
+                0,
+                false,
+                new Script(Converter.hexToByte("a914fef185305033ca6b65a53e7fbe0c8c01549ead9c87"))
+        );
+        utxos.add(utxo);
+        utxo=new UTXO(
+                Sha256Hash.wrap("6a6f2000f093c787b18ecc206f5c9c74809aa6383271c106e1b0ed16d9e4cce4"),
+                1,
+                Coin.valueOf(Converter.bitcoinToSatoshis( 0.0001)),
+                0,
+                false,
+                new Script(Converter.hexToByte("a914fef185305033ca6b65a53e7fbe0c8c01549ead9c87"))
+        );
+        utxos.add(utxo);
+        Map<String, Double> receiveAddressAndValue = new HashMap<>();
+        receiveAddressAndValue.put("mhQRcw8EVQbuC1TNbHSvBR7YdcsVtQZDhr", 0.00004);
+        receiveAddressAndValue.put("tb1qsg666g22ew3hts0gt9evgv3csurw95egej3ykx", 0.00005);
+        //构建交易
+        Transaction transaction = BitcoinOffLineSDK.TRANSACTION.buildTransaction(utxos, receiveAddressAndValue);
+        //赎回脚本
+        Script redeemScript =p2SHMultiSigAccount.getRedeemScript();
+
+        //获取待签名数据
+        List<SignatureData> signatureDataList=BitcoinOffLineSDK.TRANSACTION.getSimplifiedTransactionHashes(transaction,redeemScript);
+        System.out.println(signatureDataList);
+
+        //模拟用户签名后上传的签名数据
+//        String SignatureAInput0="3045022100f2c56653808f231ed5f4f7f92bab9d4884557b9823f311221f06d556cb0c612202204338d44a1fe284fda10a593a1e902f2b7967d46ce908b4624ce31e02e2700dfc";
+//        String SignatureAInput1="3044022056c5508a8f5ba6fb2a099ab3fa58c00abb770e8e3c4f48a2874055c26eeb32ae02205f86e7db1618c1c1422c910585aa74fd132f9dc5cc66de6b3f7e1f0d17121f6b";
+//        String SignatureBInput0="3045022100c3bf2f9f00a21e31bb83abcb78c9203e57fbf9523bf435ae5c0c4b0a9c8b6ba102201e2fcc1f61bc4d85c82067123fcfbba98ebbebb25dd15b9abca0ed7d8caae6a3";
+//        String SignatureBInput1="304402203e87eea89d3ce11e92401049b8c845c1eabd2e7556447ae9b64c94670d2959b5022041967578a6a6fa407293b8b46b24b31dc3e03950c6c16f3ea169fe80496f0d24";
+
+
+        //模拟用户A签名
+        for(SignatureData signatureData:signatureDataList) {
+            ECKey.ECDSASignature signature=BitcoinOffLineSDK.TRANSACTION.sign(ecKeyMultiSignA, signatureData.getSimplifiedTransactionHash());
+            System.out.println(HEX.encode(signature.encodeToDER()));
+            signatureData.getSignatures().add(signature);
+        }
+
+
+        //模拟用户B签名
+        for(SignatureData signatureData:signatureDataList) {
+            ECKey.ECDSASignature signature=BitcoinOffLineSDK.TRANSACTION.sign(ecKeyMultiSignB, signatureData.getSimplifiedTransactionHash());
+            System.out.println(HEX.encode(signature.encodeToDER()));
+            signatureData.getSignatures().add(signature);
+        }
+
+        //添加进交易
+        for(int i=0;i<signatureDataList.size();i++){
+            SignatureData signatureData=signatureDataList.get(i);
+            BitcoinOffLineSDK.TRANSACTION.addMultiSignatures(transaction,signatureData.getInputIndex(),signatureData.getSignatures(),redeemScript);
+        }
+
+        String transactionHex = Converter.byteToHex(transaction.bitcoinSerialize());
+        assertThat(transactionHex,is("010000000221307e70dbeb4be3be72656c199a3286ccb6948f182c77a3aec0a55ecb14e25b01000000fdfe0000483045022100f2c56653808f231ed5f4f7f92bab9d4884557b9823f311221f06d556cb0c612202204338d44a1fe284fda10a593a1e902f2b7967d46ce908b4624ce31e02e2700dfc01483045022100c3bf2f9f00a21e31bb83abcb78c9203e57fbf9523bf435ae5c0c4b0a9c8b6ba102201e2fcc1f61bc4d85c82067123fcfbba98ebbebb25dd15b9abca0ed7d8caae6a3014c6952210257a59041c72e9234adffa5adaba4a49ba38de28cc6a3c1ef4883fbb02b93a6c821030f1b97e4df51bed157b0d030dbe4356caf06e986e441d1c7077915431d13a9da21034d7e772482631bde32b32ea46203b77cf18ed75da19ba324e1692fa28706e70253aeffffffffe4cce4d916edb0e106c1713238a69a80749c5c6f20cc8eb187c793f000206f6a01000000fc00473044022056c5508a8f5ba6fb2a099ab3fa58c00abb770e8e3c4f48a2874055c26eeb32ae02205f86e7db1618c1c1422c910585aa74fd132f9dc5cc66de6b3f7e1f0d17121f6b0147304402203e87eea89d3ce11e92401049b8c845c1eabd2e7556447ae9b64c94670d2959b5022041967578a6a6fa407293b8b46b24b31dc3e03950c6c16f3ea169fe80496f0d24014c6952210257a59041c72e9234adffa5adaba4a49ba38de28cc6a3c1ef4883fbb02b93a6c821030f1b97e4df51bed157b0d030dbe4356caf06e986e441d1c7077915431d13a9da21034d7e772482631bde32b32ea46203b77cf18ed75da19ba324e1692fa28706e70253aeffffffff0288130000000000001600148235ad214acba375c1e85972c432388706e2d328a00f0000000000001976a91414b4266839352fed86052061482754ef784f06ba88ac00000000"));
+        assertThat(transaction.getTxId().toString(),is("8a0e4aa27338291ab569eeac9a5679f75d99448e879473efb9a048861806f880"));
+    }
+
+
+    @Test
+    public void testSignTransactionHash(){
+        BitcoinOffLineSDK.CONFIG.setNetworkParameters(TestNet3Params.get());
+        List<String> mnemonicCode = Arrays.asList("fetch", "panda", "tide", "theory", "risk", "aerobic",
+                "trust", "disease", "super", "color", "annual", "lazy");
+        String passphrase = "";
+        byte[] seed = BitcoinOffLineSDK.MNEMONIC.generateSeed(mnemonicCode, passphrase);
+        ECKey ecKeyMultiSignA = BitcoinOffLineSDK.ADDRESS.getECKey(seed, 0, 10);
+        String publicKeyA=BitcoinOffLineSDK.ADDRESS.getPublicKeyAsHex(ecKeyMultiSignA);
+        assertThat(publicKeyA,is("0257a59041c72e9234adffa5adaba4a49ba38de28cc6a3c1ef4883fbb02b93a6c8"));
+        assertThat(BitcoinOffLineSDK.ADDRESS.getLegacyAddress(ecKeyMultiSignA),is("myfyq3MYWJNAvfWUpg92ZyCiDGKin6J8Ty"));
+
+        ECKey ecKeyMultiSignB = BitcoinOffLineSDK.ADDRESS.getECKey(seed, 0, 11);
+        String publicKeyB=BitcoinOffLineSDK.ADDRESS.getPublicKeyAsHex(ecKeyMultiSignB);
+        assertThat(publicKeyB,is("030f1b97e4df51bed157b0d030dbe4356caf06e986e441d1c7077915431d13a9da"));
+        assertThat(BitcoinOffLineSDK.ADDRESS.getLegacyAddress(ecKeyMultiSignB),is("mjGHmnkeMh5DgKxyAcPbMCWw1vUdYv6tAN"));
+
+        String simplifiedTransactionHash="74dc031cf3b23fbfe8115b1c262f8d142c64231b07afdacbab82bcc2fb30a461";
+
+        ECKey.ECDSASignature ecdsaSignatureA=BitcoinOffLineSDK.TRANSACTION.sign(ecKeyMultiSignA,simplifiedTransactionHash);
+        assertThat(ecdsaSignatureA.r,is(new BigInteger("109808484458253610268172139953836369064223807323255231248431265642095970115874")));
+        assertThat(ecdsaSignatureA.s,is(new BigInteger("30405369459325876269230866241728336327323412577864285209513034339501378375164")));
+        assertTrue(ecKeyMultiSignA.verify(Sha256Hash.wrap(simplifiedTransactionHash),ecdsaSignatureA));
+
+        ECKey.ECDSASignature ecdsaSignatureB=BitcoinOffLineSDK.TRANSACTION.sign(ecKeyMultiSignB,simplifiedTransactionHash);
+        System.out.println(Hex.toHexString(ecdsaSignatureB.encodeToDER()));
+        assertThat(ecdsaSignatureB.r,is(new BigInteger("88538801931886127828087017735253866797765408608206642699950191553119553022881")));
+        assertThat(ecdsaSignatureB.s,is(new BigInteger("13653836071848423251407781940872071898917889941543652253956577272801956390563")));
+        assertTrue(ecKeyMultiSignB.verify(Sha256Hash.wrap(simplifiedTransactionHash),ecdsaSignatureB));
+    }
+
+
 }

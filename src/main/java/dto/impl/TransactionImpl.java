@@ -1,6 +1,7 @@
 package dto.impl;
 
 import dto.ITransaction;
+import entity.SignatureData;
 import entity.UTXOKey;
 import org.bitcoinj.core.*;
 import org.bitcoinj.crypto.TransactionSignature;
@@ -21,7 +22,8 @@ public class TransactionImpl implements ITransaction {
 
     /**
      * 构建并签名Legacy(遗留、常规)转账交易，包含P2PK,P2PKH,P2SH,P2WPKH,P2WSH
-     * @param utxoKeys UTXOKey列表
+     *
+     * @param utxoKeys               UTXOKey列表
      * @param receiveAddressAndValue 接收地址和金额列表
      * @return 构建并签名好的交易
      */
@@ -50,9 +52,10 @@ public class TransactionImpl implements ITransaction {
 
     /**
      * 签名Legacy(遗留、常规)转账交易，包含P2PK,P2PKH,P2SH
+     *
      * @param transaction 待签名交易
-     * @param utxo UTXO
-     * @param ecKey ECKey
+     * @param utxo        UTXO
+     * @param ecKey       ECKey
      */
     private void signLegacyTransaction(Transaction transaction, UTXO utxo, ECKey ecKey) {
         TransactionOutPoint outPoint = new TransactionOutPoint(BitcoinOffLineSDK.CONFIG.getNetworkParameters(), utxo.getIndex(), utxo.getHash());
@@ -61,13 +64,14 @@ public class TransactionImpl implements ITransaction {
 
     /**
      * 签名Legacy(遗留、常规)转账交易，包含P2WPKH,P2WSH
+     *
      * @param transaction 待签名交易
-     * @param utxo UTXO
-     * @param ecKey ECKey
+     * @param utxo        UTXO
+     * @param ecKey       ECKey
      */
     private void signSegWitTransaction(Transaction transaction, UTXO utxo, ECKey ecKey) {
         //构建新交易的input
-        TransactionInput transactionInput=transaction.addInput(utxo.getHash(),utxo.getIndex(),utxo.getScript());
+        TransactionInput transactionInput = transaction.addInput(utxo.getHash(), utxo.getIndex(), utxo.getScript());
         //计算见证签名
         Script scriptCode = new ScriptBuilder().data(ScriptBuilder.createP2PKHOutputScript(ecKey).getProgram()).build();
         TransactionSignature txSig1 = transaction.calculateWitnessSignature(transactionInput.getIndex(), ecKey,
@@ -79,8 +83,6 @@ public class TransactionImpl implements ITransaction {
         //隔离见证的input不需要scriptSig
         transactionInput.clearScriptBytes();
     }
-
-
 
 
     /**
@@ -111,7 +113,8 @@ public class TransactionImpl implements ITransaction {
 
     /**
      * 构建待签名交易
-     * @param utxos UTXO
+     *
+     * @param utxos                  UTXO
      * @param receiveAddressAndValue 接收地址和金额列表
      * @return 交易
      */
@@ -145,14 +148,14 @@ public class TransactionImpl implements ITransaction {
         //遍历交易的inputs
         for (int i = 0; i < inputs.size(); i++) {
             TransactionInput input = inputs.get(i);
+
             if (first) { //如果是第一个签名
-                //计算待签名hash,也就是交易的简化形式的hash值,对这个hash值进行签名
+                //计算待签名hash,也就是交易的简化形式的hash值，包含当前要签名的input和所有output,对这个hash值进行签名
                 Sha256Hash sigHash = transaction.hashForSignature(i, knownRedeemScript, Transaction.SigHash.ALL, false);
                 //签名之后得到ECDSASignature
                 ECKey.ECDSASignature ecdsaSignature = key.sign(sigHash);
                 //ECDSASignature转换为TransactionSignature
                 TransactionSignature transactionSignature = new TransactionSignature(ecdsaSignature, Transaction.SigHash.ALL, false);
-
                 // 创建p2sh多重签名的输入脚本
                 Script inputScript = ScriptBuilder.createP2SHMultiSigInputScript(Collections.singletonList(transactionSignature), knownRedeemScript);
 
@@ -194,9 +197,9 @@ public class TransactionImpl implements ITransaction {
 
                 //ECDSASignature转换为TransactionSignature
                 TransactionSignature transactionSignature = new TransactionSignature(ecdsaSignature, Transaction.SigHash.ALL, false);
-
                 //添加本次签名的数据
                 signatureList.add(transactionSignature);
+
 
                 // 重新构建p2sh多重签名的输入脚本
                 inputScript = ScriptBuilder.createP2SHMultiSigInputScript(signatureList, redeemScript);
@@ -205,5 +208,57 @@ public class TransactionImpl implements ITransaction {
                 input.setScriptSig(inputScript);
             }
         }
+    }
+
+    /**
+     * 获取所有待签名hash列表，hash数量等于input的数量,也就是交易的简化形式的hash值，
+     * 包含当前要签名的input和所有output,对这个hash值进行签名
+     *
+     * @param transaction  交易
+     * @param redeemScript 赎回脚本
+     * @return 待签名hash列表
+     */
+    @Override
+    public List<SignatureData> getSimplifiedTransactionHashes(Transaction transaction, Script redeemScript) {
+        List<SignatureData> signatureDataList = new ArrayList<>();
+        for (TransactionInput transactionInput: transaction.getInputs()) {
+            Sha256Hash sigHash = transaction.hashForSignature(transactionInput.getIndex(), redeemScript, Transaction.SigHash.ALL, false);
+            signatureDataList.add(new SignatureData(transactionInput.getIndex(),sigHash.toString()));
+        }
+        return signatureDataList;
+    }
+
+    /**
+     * 对交易的简化形式（包含当前要签名的input和所有output）的hash值进行签名
+     *
+     * @param ecKey                     ECKey
+     * @param simplifiedTransactionHash 交易的简化形式
+     * @return ECDSASignature
+     */
+    @Override
+    public ECKey.ECDSASignature sign(ECKey ecKey, String simplifiedTransactionHash) {
+        return ecKey.sign(Sha256Hash.wrap(simplifiedTransactionHash));
+    }
+
+    /**
+     * 将签名添加进交易
+     *
+     * @param transaction 交易
+     * @param inputIndex  input下标（表示签名的是哪个input）
+     * @param signatures  签名列表（多签的签名不止一个）
+     * @param redeemScript 赎回脚本
+     */
+    @Override
+    public void addMultiSignatures(Transaction transaction, int inputIndex, List<ECKey.ECDSASignature> signatures, Script redeemScript) {
+        List<TransactionSignature> signatureList = new ArrayList<>();
+        for (ECKey.ECDSASignature signature : signatures) {
+            TransactionSignature transactionSignature = new TransactionSignature(signature, Transaction.SigHash.ALL, false);
+            signatureList.add(transactionSignature);
+        }
+        // 重新构建p2sh多重签名的输入脚本
+        Script inputScript = ScriptBuilder.createP2SHMultiSigInputScript(signatureList, redeemScript);
+
+        //更新新的脚本
+        transaction.getInputs().get(inputIndex).setScriptSig(inputScript);
     }
 }

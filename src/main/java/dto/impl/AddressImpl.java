@@ -139,7 +139,8 @@ public class AddressImpl implements IAddress {
      */
     @Override
     public P2SHMultiSigAccount generateMultiSigAddress(int threshold, List<ECKey> keys) {
-        //创建多签赎回脚本
+        //创建多签赎回脚本,下面是2/3示例
+        //2 PUSHDATA(33)[0218e262023a9e32eb44cdc18a2158dc5a81c747e6e9c78e0c6a7edb8100a0147e] PUSHDATA(33)[03124af1502666ba7bf2e833ddab36a7f68e21340c97cc77ad0678291bde4c5282] PUSHDATA(33)[03c19f6736ba4d7851bae2f7b95e8aa7f919dca8ab0fc4c7483b265c0ebc970e47] 3 CHECKMULTISIG
         Script redeemScript = ScriptBuilder.createRedeemScript(threshold, keys);
         //为给定的赎回脚本创建scriptPubKey
         Script script = ScriptBuilder.createP2SHOutputScript(redeemScript);
@@ -232,5 +233,7 @@ public class AddressImpl implements IAddress {
             return null;
         }
     }
+
+
 
 }

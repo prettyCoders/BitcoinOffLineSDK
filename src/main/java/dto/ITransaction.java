@@ -1,5 +1,6 @@
 package dto;
 
+import entity.SignatureData;
 import entity.UTXOKey;
 import org.bitcoinj.core.ECKey;
 import org.bitcoinj.core.Transaction;
@@ -16,4 +17,10 @@ public interface ITransaction extends BitcoinBaseInterface {
     Transaction buildTransaction(List<UTXO> utxos, Map<String, Double> receiveAddressAndValue);
 
     void signMultiSigTransaction(Transaction transaction, Script knownRedeemScript, ECKey key, boolean first);
+
+    List<SignatureData> getSimplifiedTransactionHashes(Transaction transaction, Script redeemScript);
+
+    ECKey.ECDSASignature sign(ECKey ecKey, String simplifiedTransactionHash);
+
+    void addMultiSignatures(Transaction transaction, int inputIndex, List<ECKey.ECDSASignature> signatures, Script redeemScript);
 }

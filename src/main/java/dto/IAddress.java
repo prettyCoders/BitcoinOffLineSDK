@@ -39,4 +39,6 @@ public interface IAddress extends BitcoinBaseInterface {
 
     String scriptToAddress(Script script);
 
+
+
 }
