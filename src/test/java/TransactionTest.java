@@ -368,6 +368,9 @@ public class TransactionTest {
         assertThat(transaction.getTxId().toString(),is("8a0e4aa27338291ab569eeac9a5679f75d99448e879473efb9a048861806f880"));
     }
 
+    /**
+     * 消费多签地址资产
+     */
     @Test
     public void MultiSign_TO_P2PKH_P2WPKH2() {
         //创建多签地址
